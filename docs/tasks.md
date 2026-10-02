@@ -11,7 +11,7 @@
 - [x] ポップアップの開始／停止ボタンでタブの音声を取得し、そのまま再生を戻す
 - [x] AudioWorklet で 16kHz / 16bit PCM に変換する
 - [x] 設定画面から AWS のアクセスキーを保存できるようにする
-- [ ] Transcribe Streaming に音声を送り、結果をコンソールに表示する
+- [x] Transcribe Streaming に音声を送り、結果をコンソールに表示する
 - [ ] 【手作業】IAM ユーザーと予算アラートを作り、Windows の Chrome で動作を確認する
 
 ## フェーズ 2: 翻訳と字幕

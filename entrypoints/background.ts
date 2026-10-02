@@ -1,3 +1,4 @@
+import { awsCredentialsItem } from '@/utils/aws-credentials';
 import type { BackgroundMessage, CaptureStatus, OffscreenMessage } from '@/utils/messages';
 
 // MV3 の service worker では getUserMedia を呼べないため、音声処理は offscreen document に任せる
@@ -29,12 +30,18 @@ async function handleMessage(message: BackgroundMessage): Promise<CaptureStatus>
 async function startCapture(streamId: string) {
   if (await hasOffscreenDocument()) return;
 
+  const credentials = await awsCredentialsItem.getValue();
+  if (!credentials) {
+    await browser.runtime.openOptionsPage();
+    return;
+  }
+
   await browser.offscreen.createDocument({
     url: OFFSCREEN_PATH,
     reasons: ['USER_MEDIA'],
     justification: 'タブの音声を取得して文字起こしするため',
   });
-  const message: OffscreenMessage = { target: 'offscreen', type: 'start-capture', streamId };
+  const message: OffscreenMessage = { target: 'offscreen', type: 'start-capture', streamId, credentials };
   await browser.runtime.sendMessage(message);
 }
 
