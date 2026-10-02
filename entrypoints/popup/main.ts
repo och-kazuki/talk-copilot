@@ -3,6 +3,8 @@ import type { BackgroundMessage, CaptureStatus } from '@/utils/messages';
 const toggleButton = document.querySelector<HTMLButtonElement>('#toggle')!;
 let capturing = false;
 
+document.querySelector('#open-options')!.addEventListener('click', () => browser.runtime.openOptionsPage());
+
 toggleButton.addEventListener('click', async () => {
   toggleButton.disabled = true;
   const status = capturing ? await sendToBackground({ target: 'background', type: 'stop-capture' }) : await startCapture();
