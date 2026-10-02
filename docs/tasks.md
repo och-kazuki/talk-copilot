@@ -9,7 +9,7 @@
 - [x] 技術スタックを docs に記録する
 - [x] WXT プロジェクトの雛形を作り、ビルドが通るようにする
 - [x] ポップアップの開始／停止ボタンでタブの音声を取得し、そのまま再生を戻す
-- [ ] AudioWorklet で 16kHz / 16bit PCM に変換する
+- [x] AudioWorklet で 16kHz / 16bit PCM に変換する
 - [ ] 設定画面から AWS のアクセスキーを保存できるようにする
 - [ ] Transcribe Streaming に音声を送り、結果をコンソールに表示する
 - [ ] 【手作業】IAM ユーザーと予算アラートを作り、Windows の Chrome で動作を確認する
