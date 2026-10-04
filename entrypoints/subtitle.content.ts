@@ -1,8 +1,12 @@
 import type { ContentMessage } from '@/utils/messages';
 
 const HOST_ID = 'talk-copilot-subtitle';
-// 字幕が出たままにならないよう、次の字幕が来ないまましばらく経ったら消す
-const HIDE_AFTER_MS = 10_000;
+// 字幕ごとに、読み終えられるだけの時間を文字数から決めて表示する。
+// 日本語字幕の目安である 1 秒あたり 4 文字で読めるようにし、見つけて読み始めるまでの時間を足す。
+const BASE_DISPLAY_MS = 2_000;
+const DISPLAY_MS_PER_CHAR = 250;
+// 話が途切れず続くと字幕が増え続けて動画を覆ってしまうため、並べる数に上限を設ける
+const MAX_LINES = 3;
 
 // 全ページに常駐させると広いホスト権限が要るため、開始したときに background から注入する
 export default defineContentScript({
@@ -26,22 +30,24 @@ function createSubtitle() {
   host.style.cssText = 'position: fixed; z-index: 2147483647; pointer-events: none; display: none;';
   // ページの CSS の影響を受けないよう、shadow DOM の中に表示する
   const shadow = host.attachShadow({ mode: 'open' });
-  const text = document.createElement('div');
-  text.style.cssText = `
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 4px 12px;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.75);
-    color: #fff;
-    font: 600 22px/1.4 sans-serif;
-    text-align: center;
-    white-space: pre-wrap;
+  const style = document.createElement('style');
+  style.textContent = `
+    .line {
+      width: fit-content;
+      max-width: 100%;
+      margin: 4px auto 0;
+      padding: 4px 12px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font: 600 22px/1.4 sans-serif;
+      text-align: center;
+      white-space: pre-wrap;
+    }
+    /* 新しい字幕がどれか分かるよう、古い字幕は少し薄くする */
+    .line:not(:last-child) { opacity: 0.7; }
   `;
-  shadow.append(text);
-
-  let hideTimer: ReturnType<typeof setTimeout> | undefined;
+  shadow.append(style);
 
   // 全画面表示中は全画面の要素の外が描画されないため、表示するたびに置き場所と位置を合わせ直す。
   // video 要素そのものが全画面のときは中に要素を置けないので、字幕は出せない。
@@ -63,13 +69,23 @@ function createSubtitle() {
   document.addEventListener('fullscreenchange', place);
 
   return {
+    // 前の字幕を読み終える前に次の字幕が届くこともあるため、置き換えずに下へ足していく
     show(value: string) {
-      text.textContent = value;
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.textContent = value;
+      shadow.append(line);
+
+      const lines = shadow.querySelectorAll('.line');
+      if (lines.length > MAX_LINES) lines[0]!.remove();
+
       host.style.display = 'block';
       place();
 
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => (host.style.display = 'none'), HIDE_AFTER_MS);
+      setTimeout(() => {
+        line.remove();
+        if (!shadow.querySelector('.line')) host.style.display = 'none';
+      }, BASE_DISPLAY_MS + value.length * DISPLAY_MS_PER_CHAR);
     },
   };
 }
