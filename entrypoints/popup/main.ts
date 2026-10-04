@@ -1,5 +1,13 @@
 import type { BackgroundMessage, CaptureStatus } from '@/utils/messages';
-import { SOURCE_LANGUAGES, type SourceLanguage, sourceLanguageItem } from '@/utils/source-language';
+import { SOURCE_LANGUAGES, type SourceLanguage } from '@/utils/source-language';
+import { storage } from 'wxt/utils/storage';
+
+// 同じ言語の動画を続けて見ることが多いので、前回選んだ言語を覚えておく。
+// defineItem は作った時点でストレージを読みにいくため、chrome.storage を使えない offscreen document からも
+// 読み込まれる utils/source-language.ts には置かない。
+const sourceLanguageItem = storage.defineItem<SourceLanguage>('local:sourceLanguage', {
+  fallback: 'en',
+});
 
 const toggleButton = document.querySelector<HTMLButtonElement>('#toggle')!;
 const sourceLanguageSelect = document.querySelector<HTMLSelectElement>('#source-language')!;
