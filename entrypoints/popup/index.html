@@ -5,11 +5,17 @@
     <title>Talk Copilot</title>
     <style>
       body { width: 200px; padding: 12px; font-family: sans-serif; }
+      label { display: block; margin-bottom: 8px; font-size: 12px; }
+      select { width: 100%; margin-top: 2px; }
       button { width: 100%; padding: 8px; }
       a { display: block; margin-top: 8px; font-size: 12px; }
     </style>
   </head>
   <body>
+    <label>
+      元の言語
+      <select id="source-language"></select>
+    </label>
     <button id="toggle" disabled>確認中…</button>
     <a id="open-options" href="#">設定</a>
     <script type="module" src="./main.ts"></script>

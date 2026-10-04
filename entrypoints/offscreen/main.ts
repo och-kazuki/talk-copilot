@@ -1,5 +1,5 @@
-import type { AwsCredentials } from '@/utils/aws-credentials';
 import type { BackgroundMessage, OffscreenMessage } from '@/utils/messages';
+import { SOURCE_LANGUAGES } from '@/utils/source-language';
 import { createChunkQueue, transcribe } from './transcriber';
 import { createTranslator } from './translator';
 
@@ -9,11 +9,11 @@ browser.runtime.onMessage.addListener((message: OffscreenMessage) => {
   if (message.target !== 'offscreen') return;
 
   if (message.type === 'start-capture') {
-    startCapture(message.tabId, message.streamId, message.credentials).catch((error) => console.error('文字起こしに失敗しました', error));
+    startCapture(message).catch((error) => console.error('文字起こしに失敗しました', error));
   }
 });
 
-async function startCapture(tabId: number, streamId: string, credentials: AwsCredentials) {
+async function startCapture({ tabId, streamId, credentials, sourceLanguage }: OffscreenMessage) {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
       mandatory: {
@@ -25,8 +25,8 @@ async function startCapture(tabId: number, streamId: string, credentials: AwsCre
 
   playBack(stream);
 
-  // 元の言語を選べるようになるまでは英語に固定する
-  const translate = createTranslator(credentials, 'en');
+  const language = SOURCE_LANGUAGES[sourceLanguage];
+  const translate = createTranslator(credentials, language.translate);
   // 翻訳は並行して進めるが、字幕は話した順に出したいので、表示だけを順番に並べる
   let subtitleQueue = Promise.resolve();
 
@@ -34,7 +34,7 @@ async function startCapture(tabId: number, streamId: string, credentials: AwsCre
   await encodePcm(stream, (chunk) => audioChunks.push(chunk));
   await transcribe(audioChunks, {
     credentials,
-    languageCode: 'en-US',
+    languageCode: language.transcribe,
     sampleRate: TRANSCRIBE_SAMPLE_RATE,
     onTranscript: ({ text, isPartial }) => {
       if (isPartial) {
