@@ -16,8 +16,9 @@ render(await sendToBackground({ target: 'background', type: 'get-status' }));
 // getMediaStreamId はユーザーが拡張機能を操作したことを起点に呼ぶ必要があるため、ポップアップで呼ぶ
 async function startCapture(): Promise<CaptureStatus> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  const streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tab?.id });
-  return sendToBackground({ target: 'background', type: 'start-capture', streamId });
+  const tabId = tab!.id!;
+  const streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
+  return sendToBackground({ target: 'background', type: 'start-capture', tabId, streamId });
 }
 
 function sendToBackground(message: BackgroundMessage): Promise<CaptureStatus> {
