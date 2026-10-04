@@ -1,3 +1,4 @@
+import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ContentMessage } from '@/utils/messages';
 
 const HOST_ID = 'talk-copilot-subtitle';
@@ -11,20 +12,21 @@ const MAX_LINES = 3;
 // 全ページに常駐させると広いホスト権限が要るため、開始したときに background から注入する
 export default defineContentScript({
   registration: 'runtime',
-  main() {
-    // 開始と停止を繰り返すと何度も注入されるため、2 回目以降は何もしない
-    if (document.getElementById(HOST_ID)) return;
-
-    const subtitle = createSubtitle();
-    browser.runtime.onMessage.addListener((message: ContentMessage) => {
+  // 開始と停止を繰り返すと何度も注入され、拡張機能を更新するとそれまでの content script は動かなくなる。
+  // 新しく注入されたら前のものは ctx が無効になるので、そのとき字幕の要素とリスナーを片付けて入れ替える。
+  main(ctx) {
+    const subtitle = createSubtitle(ctx);
+    const onMessage = (message: ContentMessage) => {
       if (message.target !== 'content') return;
 
       if (message.type === 'show-subtitle') subtitle.show(message.text);
-    });
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    ctx.onInvalidated(() => browser.runtime.onMessage.removeListener(onMessage));
   },
 });
 
-function createSubtitle() {
+function createSubtitle(ctx: ContentScriptContext) {
   const host = document.createElement('div');
   host.id = HOST_ID;
   host.style.cssText = 'position: fixed; z-index: 2147483647; pointer-events: none; display: none;';
@@ -48,6 +50,7 @@ function createSubtitle() {
     .line:not(:last-child) { opacity: 0.7; }
   `;
   shadow.append(style);
+  ctx.onInvalidated(() => host.remove());
 
   // 全画面表示中は全画面の要素の外が描画されないため、表示するたびに置き場所と位置を合わせ直す。
   // video 要素そのものが全画面のときは中に要素を置けないので、字幕は出せない。
@@ -64,9 +67,9 @@ function createSubtitle() {
     host.style.bottom = `${window.innerHeight - area.bottom + area.height * 0.12}px`;
   };
 
-  window.addEventListener('resize', place);
-  window.addEventListener('scroll', place, { passive: true });
-  document.addEventListener('fullscreenchange', place);
+  ctx.addEventListener(window, 'resize', place);
+  ctx.addEventListener(window, 'scroll', place, { passive: true });
+  ctx.addEventListener(document, 'fullscreenchange', place);
 
   return {
     // 前の字幕を読み終える前に次の字幕が届くこともあるため、置き換えずに下へ足していく
@@ -82,7 +85,7 @@ function createSubtitle() {
       host.style.display = 'block';
       place();
 
-      setTimeout(() => {
+      ctx.setTimeout(() => {
         line.remove();
         if (!shadow.querySelector('.line')) host.style.display = 'none';
       }, BASE_DISPLAY_MS + value.length * DISPLAY_MS_PER_CHAR);
