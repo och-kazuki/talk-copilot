@@ -1,6 +1,7 @@
 import type { AwsCredentials } from '@/utils/aws-credentials';
 import type { OffscreenMessage } from '@/utils/messages';
 import { createChunkQueue, transcribe } from './transcriber';
+import { createTranslator } from './translator';
 
 const TRANSCRIBE_SAMPLE_RATE = 16000;
 
@@ -24,14 +25,27 @@ async function startCapture(streamId: string, credentials: AwsCredentials) {
 
   playBack(stream);
 
+  // 元の言語を選べるようになるまでは英語に固定する
+  const translate = createTranslator(credentials, 'en');
+
   const audioChunks = createChunkQueue<ArrayBuffer>();
   await encodePcm(stream, (chunk) => audioChunks.push(chunk));
   await transcribe(audioChunks, {
     credentials,
-    // 元の言語を選べるようになるまでは英語に固定する
     languageCode: 'en-US',
     sampleRate: TRANSCRIBE_SAMPLE_RATE,
-    onTranscript: ({ text, isPartial }) => (isPartial ? console.debug('partial:', text) : console.log('final:', text)),
+    onTranscript: ({ text, isPartial }) => {
+      if (isPartial) {
+        console.debug('partial:', text);
+        return;
+      }
+      console.log('final:', text);
+      // 翻訳を待つと次の文字起こし結果の受け取りが遅れるため、待たずに進める
+      translate(text).then(
+        (translated) => console.log('translated:', translated),
+        (error) => console.error('翻訳に失敗しました', error),
+      );
+    },
   });
 }
 
