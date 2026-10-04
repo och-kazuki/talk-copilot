@@ -7,7 +7,7 @@ import {
 import type { AwsCredentials } from '@/utils/aws-credentials';
 
 // 日本から使うので、通信の遅れが小さい東京リージョンに固定する
-const REGION = 'ap-northeast-1';
+export const REGION = 'ap-northeast-1';
 
 export type Transcript = {
   text: string;

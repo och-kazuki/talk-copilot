@@ -1,5 +1,6 @@
 import { awsCredentialsItem } from '@/utils/aws-credentials';
-import type { BackgroundMessage, CaptureStatus, OffscreenMessage } from '@/utils/messages';
+import type { BackgroundMessage, CaptureStatus, ContentMessage, OffscreenMessage } from '@/utils/messages';
+import type { SourceLanguage } from '@/utils/source-language';
 
 // MV3 の service worker では getUserMedia を呼べないため、音声処理は offscreen document に任せる
 const OFFSCREEN_PATH = '/offscreen.html';
@@ -8,17 +9,24 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: BackgroundMessage, _sender, sendResponse) => {
     if (message.target !== 'background') return;
 
+    if (message.type === 'show-subtitle') {
+      const subtitle: ContentMessage = { target: 'content', type: 'show-subtitle', text: message.text };
+      // 取得中にタブを閉じたり移動したりすると届け先がなくなるが、文字起こしは続けたいので無視する
+      browser.tabs.sendMessage(message.tabId, subtitle).catch(() => {});
+      return;
+    }
+
     handleMessage(message).then(sendResponse);
     return true;
   });
 });
 
-async function handleMessage(message: BackgroundMessage): Promise<CaptureStatus> {
+async function handleMessage(message: Exclude<BackgroundMessage, { type: 'show-subtitle' }>): Promise<CaptureStatus> {
   switch (message.type) {
     case 'get-status':
       break;
     case 'start-capture':
-      await startCapture(message.streamId);
+      await startCapture(message.tabId, message.streamId, message.sourceLanguage);
       break;
     case 'stop-capture':
       await stopCapture();
@@ -27,7 +35,7 @@ async function handleMessage(message: BackgroundMessage): Promise<CaptureStatus>
   return { capturing: await hasOffscreenDocument() };
 }
 
-async function startCapture(streamId: string) {
+async function startCapture(tabId: number, streamId: string, sourceLanguage: SourceLanguage) {
   if (await hasOffscreenDocument()) return;
 
   const credentials = await awsCredentialsItem.getValue();
@@ -36,12 +44,25 @@ async function startCapture(streamId: string) {
     return;
   }
 
+  // ポップアップを開いたことで activeTab の権限が得られているので、そのタブにだけ字幕を表示する仕組みを入れる
+  await browser.scripting.executeScript({
+    target: { tabId },
+    files: ['/content-scripts/subtitle.js'],
+  });
+
   await browser.offscreen.createDocument({
     url: OFFSCREEN_PATH,
     reasons: ['USER_MEDIA'],
     justification: 'タブの音声を取得して文字起こしするため',
   });
-  const message: OffscreenMessage = { target: 'offscreen', type: 'start-capture', streamId, credentials };
+  const message: OffscreenMessage = {
+    target: 'offscreen',
+    type: 'start-capture',
+    tabId,
+    streamId,
+    credentials,
+    sourceLanguage,
+  };
   await browser.runtime.sendMessage(message);
 }
 

@@ -12,13 +12,14 @@
 - [x] AudioWorklet で 16kHz / 16bit PCM に変換する
 - [x] 設定画面から AWS のアクセスキーを保存できるようにする
 - [x] Transcribe Streaming に音声を送り、結果をコンソールに表示する
-- [ ] 【手作業】IAM ユーザーと予算アラートを作り、Windows の Chrome で動作を確認する（手順は setup.md）
+- [x] 【手作業】IAM ユーザーと予算アラートを作り、Windows の Chrome で動作を確認する（手順は setup.md）
 
 ## フェーズ 2: 翻訳と字幕
 
-- [ ] final の結果を Translate で日本語に訳す
-- [ ] content script で動画の上に字幕を重ねて表示する
-- [ ] ポップアップで元の言語（英語／韓国語）を選べるようにする
+- [x] final の結果を Translate で日本語に訳す
+- [x] content script で動画の上に字幕を重ねて表示する
+- [x] ポップアップで元の言語（英語／韓国語）を選べるようにする
+- [ ] 【手作業】Windows の Chrome で英語と韓国語の動画に字幕が出ることを確認する（手順は setup.md）
 
 ## 後で検討
 
